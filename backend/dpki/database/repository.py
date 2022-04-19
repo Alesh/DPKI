@@ -61,6 +61,19 @@ class CertEntity(models.CertEntity, metaclass=Repo, table=cert_entities):
             return obj.pem_serialized
 
     @staticmethod
+    async def get_by_address(ac: 'AsyncConnection', address: bytes) -> str | None:
+        """ Return serialized certificate by public_key """
+        select_stmt = select(CertEntity.c) \
+            .where(CertEntity.c.not_valid_after > datetime.now(tz=timezone.utc)) \
+            .where(CertEntity.c.public_key >= address) \
+            .where(CertEntity.c.revocated_at == None)
+        async for obj in await ac.stream(select_stmt):
+            if obj.public_key == address or obj.public_key.startswith(address):
+                return obj.pem_serialized
+            else:
+                break
+
+    @staticmethod
     async def get_by_subject(ac: 'AsyncConnection', subject_name: str) -> str | None:
         """ Return serialized certificate by subject name """
         select_stmt = select(CertEntity.c) \

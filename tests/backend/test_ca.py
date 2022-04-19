@@ -5,7 +5,6 @@ from csp import ed25519
 from csp.provider import CSProvider
 
 from dpki.x509cert import create_csr, apply_csr, template as t
-from dpki.ca.utils import can_issue_csr
 
 
 @pytest.fixture
@@ -34,11 +33,3 @@ def ca_cats_pair():
     subject = "CN=CA controlled by Cheshire Cat, STREET=Cat's house, L=Cheshire, C=WN"
     csr = create_csr(subject, key, template=t.CA, path_length=5)
     return csr, key
-
-
-def test__can_issue_csr(ca_root_pair, ca_first_pair, ca_cats_pair):
-    ca_root_cert, _ = ca_root_pair
-    ca_first_csr, _ = ca_first_pair
-    ca_cats_csr, _ = ca_cats_pair
-    assert can_issue_csr(ca_root_cert, ca_first_csr) == 1
-    assert can_issue_csr(ca_root_cert, ca_cats_csr) == 3

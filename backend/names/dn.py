@@ -67,3 +67,10 @@ class DistinguishedName:
             if b[:len(a)] == a:
                 return len(b) - len(a) + 1
         return 0
+
+    def max_distance(self, other: 'DistinguishedName') -> int:
+        return max(
+            self.distance(Hierarchy.Country, other),
+            self.distance(Hierarchy.Organization, other),
+            self.distance(Hierarchy.Domain, other),
+        )

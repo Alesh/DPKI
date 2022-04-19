@@ -3,6 +3,7 @@ from typing import TYPE_CHECKING, Type
 
 from cryptography import x509
 from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import serialization
 
 from names import DistinguishedName
 from dpki.x509cert.template import Template
@@ -12,7 +13,7 @@ if TYPE_CHECKING:
     from cryptography.x509 import CertificateSigningRequestBuilder, CertificateBuilder, \
         CertificateSigningRequest, Certificate
 
-    SubjectName =  str | 'DistinguishedName'
+    SubjectName = str | 'DistinguishedName'
     CommonBuilder = CertificateSigningRequestBuilder | CertificateBuilder
     IssuerPair = tuple[Certificate | CertificateSigningRequest, Key]
 
@@ -45,4 +46,21 @@ def apply_csr(csr: 'CertificateSigningRequest', issuer_pair: 'IssuerPair',
     return builder.sign(private_key=key.raw, algorithm=None, backend=default_backend())
 
 
+def deserialize_certificate_from_pem_x509(pem_serialized: bytes) -> 'Certificate':
+    """ Deserializes PEM representation of x.509 certificate """
+    return x509.load_pem_x509_certificate(pem_serialized, backend=default_backend())
 
+
+def serialize_certificate_to_pem_x509(cert: 'Certificate') -> bytes:
+    """ Serializes x.509 certificate to PEM representation  """
+    return cert.public_bytes(encoding=serialization.Encoding.PEM)
+
+
+def deserialize_csr_from_pem_x509(pem_serialized: bytes) -> 'CertificateSigningRequest':
+    """ Deserializes PEM representation of x.509 certificate signing request """
+    return x509.load_pem_x509_csr(pem_serialized, backend=default_backend())
+
+
+def serialize_csr_to_pem_x509(csr: 'CertificateSigningRequest') -> bytes:
+    """ Serializes x.509 certificate signing request to PEM representation  """
+    return csr.public_bytes(encoding=serialization.Encoding.PEM)

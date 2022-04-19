@@ -34,4 +34,4 @@ dependencies = [
 
 [project.scripts]
 testnet-gen = "scripts.testnet:main"
-request-cert = "scripts.x509gen:csr"
+request-cert = "scripts.x509gen:main"

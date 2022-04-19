@@ -1,7 +1,10 @@
+import asyncio
 import sys
+from time import time
 import os.path
 import argparse
 from getpass import getpass
+from base64 import b64decode
 
 import httpx
 from csp import ed25519
@@ -11,6 +14,9 @@ from cryptography.hazmat.primitives import serialization
 
 import dpki.x509cert.template
 from dpki import x509cert
+from dpki.chainapp import Client
+from dpki.chainapp.checker import ResultCode
+from names import DistinguishedName
 
 
 def get_password(has_key):
@@ -24,7 +30,29 @@ def get_password(has_key):
     return password.encode('utf8')
 
 
-def csr():
+async def request_cert(output, subject, key, template):
+    cli = Client('http://localhost:26657')
+    csr = x509cert.create_csr(subject, key, template=template)
+    code, log = await cli.send_scr_nx(csr)
+    if code != ResultCode.Accepted:
+        print(f"ERROR: {log}")
+        exit(-2)
+    print(f"Certificate request accepted, awaiting issuance...")
+    timeout = time() + 300
+    while timeout > time():
+        await asyncio.sleep(1)
+        code, payload = await cli.query('ca/get', bytes(key.public_key))
+        if code == ResultCode.OK:
+            pem_serialized = b64decode(payload)
+            print(pem_serialized.decode('utf8'))
+            with open(os.path.join(output, 'certificate.crt'), 'wb') as file:
+                file.write(pem_serialized)
+            break
+    else:
+        print(f"TIMEOUT: It seems that something went wrong.")
+
+
+def main():
     parser = argparse.ArgumentParser(prog=os.path.basename(sys.argv[0], ), description='CSE generator')
     parser.add_argument('subject', help='Certificate subject (distinguished) name')
     parser.add_argument('-o', '--output', help='Output files path')
@@ -69,14 +97,8 @@ def csr():
     else:
         with open(args.key, 'rb') as file:
             key = serialization.load_pem_private_key(file.read(), password, backend=default_backend())
-
-    csr = x509cert.create_csr(args.subject, key, template=template)
-    r = httpx.post('http://localhost:26657/check_tx',
-                   data=dict(tx='0x' + csr.public_bytes(encoding=serialization.Encoding.PEM).hex()))
-    print(r)
-    # with open(os.path.join(output, 'certificate.csr'), 'wb') as file:
-    #     file.write(csr.public_bytes(encoding=serialization.Encoding.PEM))
+    asyncio.run(request_cert(args.output, args.subject, key, template))
 
 
 if __name__ == '__main__':
-    csr()
+    main()
